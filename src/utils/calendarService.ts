@@ -13,9 +13,13 @@ const WORK_DAYS = [1, 2, 3, 4]; // 0=Dom, 1=Lun, 2=Mar, 3=Mié, 4=Jue, 5=Vie, 6=
 // Argentina is always UTC-3, no DST
 const BSAS_OFFSET_HOURS = 3;
 
-const credentials = JSON.parse(
-    readFileSync(join(process.cwd(), 'google.json.txt'), 'utf8')
-);
+// Soporta JSON inline (env var) o path a archivo
+const credentialsRaw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+    ?? readFileSync(
+        process.env.GOOGLE_SERVICE_ACCOUNT_PATH ?? join(process.cwd(), 'google.json.txt'),
+        'utf8'
+    );
+const credentials = JSON.parse(credentialsRaw);
 
 const auth = new google.auth.JWT({
     email: credentials.client_email,
