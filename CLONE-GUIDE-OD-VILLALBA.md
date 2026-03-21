@@ -302,8 +302,6 @@ const socialWorks = { '1': 'CONSULTA PARTICULAR' };
 '📞 Llamá al: *3735604949*'
 '📞 *3735604949*'
 
-// DESPUÉS (confirmar con la odontóloga):
-'📞 Llamá al: *XXXXXXXXXX*'
 ```
 
 ### 6.6 Mensaje de sobreturnos — referencia al tipo de profesional

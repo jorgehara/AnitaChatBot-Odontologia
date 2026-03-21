@@ -237,7 +237,7 @@ async function buscarProximoDiaConTurnos(startDay: Date, localChatDate: Date, st
     }
 
     if (foundSlots.length === 0) {
-        await flowDynamic('❌ No encontré turnos disponibles en los próximos días.\n📞 Llamá al *XXXXXXXXXX* para más información.');
+        await flowDynamic('❌ No encontré turnos disponibles en los próximos días.\n');
         return;
     }
 
@@ -957,7 +957,7 @@ export const clientDataFlow = addKeyword(['datos_cliente'])
         // Check cancelar global
         if (ctx.body.trim().toLowerCase() === 'cancelar') {
             await state.clear();
-            await flowDynamic('❌ *Reserva cancelada.* Si necesitas más ayuda, no dudes en contactarnos nuevamente.\n🤗 ¡Que tengas un excelente día!\n📞 *XXXXXXXXXX*');
+            await flowDynamic('❌ *Reserva cancelada.* Si necesitas más ayuda, no dudes en contactarnos nuevamente.\n🤗 ¡Que tengas un excelente día!\n*');
             return gotoFlow(goodbyeFlow);
         }
         const name = ctx.body.trim();
@@ -973,7 +973,7 @@ export const clientDataFlow = addKeyword(['datos_cliente'])
         // Check cancelar global
         if (ctx.body.trim().toLowerCase() === 'cancelar') {
             await state.clear();
-            await flowDynamic('❌ *Reserva cancelada.* Si necesitas más ayuda, no dudes en contactarnos nuevamente.\n🤗 ¡Que tengas un excelente día!\n📞 *XXXXXXXXXX*');
+            await flowDynamic('❌ *Reserva cancelada.* Si necesitas más ayuda, no dudes en contactarnos nuevamente.\n🤗 ¡Que tengas un excelente día!\n*');
             return gotoFlow(goodbyeFlow);
         }
         const socialWorkOption = ctx.body.trim();
@@ -1256,8 +1256,7 @@ const welcomeFlow = addKeyword<Provider, IDBDatabase>(welcomeKeywords)
                 await flowDynamic(
                     `🦷 *¡Bienvenido al Asistente Virtual de la Od. Melina Villalba!* 🦷\n\n` +
                     `⚠️ *La Od. Villalba no atiende el ${formatearFechaEspanol(formattedDate)}.*\n\n` +
-                    `📅 *Próximo día disponible:* ${formatearFechaEspanol(format(nextDay, 'yyyy-MM-dd'))}\n\n` +
-                    `📞 Para consultar llamá al *XXXXXXXXXX*`
+                    `📅 *Próximo día disponible:* ${formatearFechaEspanol(format(nextDay, 'yyyy-MM-dd'))}\n\n`
                 );
                 return;
             }
