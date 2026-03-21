@@ -1,6 +1,6 @@
 import { addKeyword } from '@builderbot/bot';
 import { BaileysProvider as Provider } from '@builderbot/provider-baileys';
-import { getAvailableSlots, createCalendarEvent, AvailableSlot } from '../utils/calendarService';
+import { getAvailableSlots, AvailableSlot } from '../utils/calendarService';
 import { formatSlotsMessage, filterSlotsByPreference } from '../utils/haikuService';
 import { createCitaMedicaAppointment } from '../utils/citaMedicaService';
 
@@ -157,13 +157,7 @@ export const newPatientFlow = addKeyword<Provider, IDBDatabase>(['__new_patient_
             };
 
             try {
-                await createCalendarEvent(selectedSlot, eventData);
-
-                try {
-                    await createCitaMedicaAppointment(selectedSlot, eventData);
-                } catch (citaError) {
-                    console.error('[NEW_PATIENT] ⚠️ Error al registrar en CitaMedicaBeta (turno igualmente confirmado en Calendar):', citaError);
-                }
+                await createCitaMedicaAppointment(selectedSlot, eventData);
 
                 await flowDynamic(
                     '✅ *¡Turno confirmado!* 🎉\n\n' +
@@ -175,7 +169,7 @@ export const newPatientFlow = addKeyword<Provider, IDBDatabase>(['__new_patient_
                 );
                 await state.clear();
             } catch (error) {
-                console.error('[NEW_PATIENT] Error creando evento:', error);
+                console.error('[NEW_PATIENT] Error al registrar turno:', error);
                 await flowDynamic(
                     '❌ No se pudo confirmar el turno en este momento.\n' +
                     'Por favor, contactá directamente a la Dra. Villalba 📞'
