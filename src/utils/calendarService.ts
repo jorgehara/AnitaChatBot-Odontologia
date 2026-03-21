@@ -1,8 +1,6 @@
 import { google } from 'googleapis';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 
 const TIMEZONE = 'America/Argentina/Buenos_Aires';
 const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID!;
@@ -21,6 +19,10 @@ const credentialsRaw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
     );
 const credentials = JSON.parse(credentialsRaw);
 
+console.log('[CALENDAR] Service account:', credentials.client_email);
+console.log('[CALENDAR] Calendar ID:', CALENDAR_ID);
+console.log('[CALENDAR] Horario:', `Lun-Jue ${WORK_START_HOUR}:00 - ${WORK_END_HOUR}:00 BsAs`);
+
 const auth = new google.auth.JWT({
     email: credentials.client_email,
     key: credentials.private_key,
@@ -30,11 +32,11 @@ const auth = new google.auth.JWT({
 const calendar = google.calendar({ version: 'v3', auth });
 
 export interface AvailableSlot {
-    startISO: string;       // UTC ISO string
-    endISO: string;         // UTC ISO string
-    date: string;           // 'yyyy-MM-dd' in BsAs
-    time: string;           // 'HH:mm' in BsAs
-    displayText: string;    // 'Martes 25/03 — 14:30 hs'
+    startISO: string;
+    endISO: string;
+    date: string;
+    time: string;
+    displayText: string;
     durationMinutes: number;
 }
 
@@ -45,12 +47,10 @@ export interface PatientEventData {
     notes?: string;
 }
 
-// Converts a Buenos Aires local time to UTC Date
 function bsAsToUtc(year: number, month: number, day: number, hour: number, minute: number): Date {
     return new Date(Date.UTC(year, month - 1, day, hour + BSAS_OFFSET_HOURS, minute, 0));
 }
 
-// Gets BsAs date components from a UTC Date
 function utcToBsAs(utcDate: Date): { year: number; month: number; day: number; hour: number; minute: number; dayOfWeek: number } {
     const bsAs = new Date(utcDate.getTime() - BSAS_OFFSET_HOURS * 60 * 60 * 1000);
     return {
@@ -59,7 +59,7 @@ function utcToBsAs(utcDate: Date): { year: number; month: number; day: number; h
         day: bsAs.getUTCDate(),
         hour: bsAs.getUTCHours(),
         minute: bsAs.getUTCMinutes(),
-        dayOfWeek: bsAs.getUTCDay(), // 0=Sun, 1=Mon, ..., 6=Sat
+        dayOfWeek: bsAs.getUTCDay(),
     };
 }
 
@@ -74,15 +74,15 @@ function formatSlotDisplay(utcDate: Date): string {
 
 export async function getAvailableSlots(durationMinutes: 30 | 60): Promise<AvailableSlot[]> {
     const nowUtc = new Date();
-    const minBookingUtc = new Date(nowUtc.getTime() + 60 * 60 * 1000); // +1 hour
+    const minBookingUtc = new Date(nowUtc.getTime() + 60 * 60 * 1000);
 
     const { year, month } = utcToBsAs(nowUtc);
-    const lastDayOfMonth = new Date(year, month, 0).getDate(); // last day in BsAs month
-
-    // End of month at 18:00 BsAs
+    const lastDayOfMonth = new Date(year, month, 0).getDate();
     const endOfMonthUtc = bsAsToUtc(year, month, lastDayOfMonth, WORK_END_HOUR, 0);
 
-    // Query Google Calendar for busy times
+    console.log(`[CALENDAR] getAvailableSlots — duración: ${durationMinutes} min`);
+    console.log(`[CALENDAR] Rango de búsqueda: ${minBookingUtc.toISOString()} → ${endOfMonthUtc.toISOString()}`);
+
     const freeBusy = await calendar.freebusy.query({
         requestBody: {
             timeMin: minBookingUtc.toISOString(),
@@ -92,23 +92,30 @@ export async function getAvailableSlots(durationMinutes: 30 | 60): Promise<Avail
         },
     });
 
+    const errors = freeBusy.data.calendars?.[CALENDAR_ID]?.errors;
+    if (errors?.length) {
+        console.warn('[CALENDAR] ⚠️ Errores en freeBusy:', JSON.stringify(errors));
+    }
+
     const busyPeriods = (freeBusy.data.calendars?.[CALENDAR_ID]?.busy ?? []).map(b => ({
         start: new Date(b.start!),
         end: new Date(b.end!),
     }));
 
+    console.log(`[CALENDAR] Períodos ocupados encontrados: ${busyPeriods.length}`);
+    busyPeriods.forEach(b => {
+        console.log(`[CALENDAR]   Ocupado: ${b.start.toISOString()} → ${b.end.toISOString()}`);
+    });
+
     const slots: AvailableSlot[] = [];
     const { day: todayDay } = utcToBsAs(nowUtc);
 
     for (let day = todayDay; day <= lastDayOfMonth; day++) {
-        // Check day of week using noon to avoid DST edge cases
         const noonUtc = bsAsToUtc(year, month, day, 12, 0);
         const { dayOfWeek } = utcToBsAs(noonUtc);
 
-        // Solo lunes a jueves
         if (!WORK_DAYS.includes(dayOfWeek)) continue;
 
-        // Generate slots for this day
         for (
             let minutes = WORK_START_HOUR * 60;
             minutes + durationMinutes <= WORK_END_HOUR * 60;
@@ -120,13 +127,9 @@ export async function getAvailableSlots(durationMinutes: 30 | 60): Promise<Avail
             const slotStartUtc = bsAsToUtc(year, month, day, hour, minute);
             const slotEndUtc = new Date(slotStartUtc.getTime() + durationMinutes * 60 * 1000);
 
-            // Skip slots in the past (+ 1h buffer)
             if (slotStartUtc < minBookingUtc) continue;
 
-            // Check against busy periods
-            const isBusy = busyPeriods.some(
-                b => slotStartUtc < b.end && slotEndUtc > b.start
-            );
+            const isBusy = busyPeriods.some(b => slotStartUtc < b.end && slotEndUtc > b.start);
             if (isBusy) continue;
 
             const { day: d, month: m, hour: h, minute: mi } = utcToBsAs(slotStartUtc);
@@ -142,10 +145,24 @@ export async function getAvailableSlots(durationMinutes: 30 | 60): Promise<Avail
         }
     }
 
+    console.log(`[CALENDAR] Slots disponibles generados: ${slots.length}`);
+    if (slots.length > 0) {
+        console.log(`[CALENDAR]   Primero: ${slots[0].displayText}`);
+        console.log(`[CALENDAR]   Último:  ${slots[slots.length - 1].displayText}`);
+    }
+
     return slots;
 }
 
 export async function createCalendarEvent(slot: AvailableSlot, patient: PatientEventData): Promise<void> {
+    console.log('[CALENDAR] Creando evento:');
+    console.log(`[CALENDAR]   Paciente: ${patient.patientName}`);
+    console.log(`[CALENDAR]   Tipo: ${patient.appointmentType}`);
+    console.log(`[CALENDAR]   Slot: ${slot.displayText}`);
+    console.log(`[CALENDAR]   Start ISO: ${slot.startISO}`);
+    console.log(`[CALENDAR]   End ISO:   ${slot.endISO}`);
+    console.log(`[CALENDAR]   Calendar ID: ${CALENDAR_ID}`);
+
     await calendar.events.insert({
         calendarId: CALENDAR_ID,
         requestBody: {
@@ -159,4 +176,6 @@ export async function createCalendarEvent(slot: AvailableSlot, patient: PatientE
             end: { dateTime: slot.endISO, timeZone: TIMEZONE },
         },
     });
+
+    console.log('[CALENDAR] ✅ Evento creado exitosamente');
 }
