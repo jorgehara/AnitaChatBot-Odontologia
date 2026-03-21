@@ -2,6 +2,7 @@ import { addKeyword } from '@builderbot/bot';
 import { BaileysProvider as Provider } from '@builderbot/provider-baileys';
 import { newPatientFlow } from './newPatient.flow';
 import { controlFlow } from './control.flow';
+import { extractUserIntent } from '../utils/intentExtractor';
 
 const WELCOME_KEYWORDS = [
     'hi', 'hello', 'hola', 'buenas', 'buenos días', 'buenas tardes',
@@ -27,9 +28,30 @@ export const mainMenuFlow = addKeyword<Provider, IDBDatabase>(WELCOME_KEYWORDS)
         '3️⃣ Tengo dolor / urgencia\n\n' +
         '_Respondé con el número de tu opción_',
         { capture: true },
-        async (ctx, { gotoFlow, flowDynamic }) => {
-            const option = ctx.body.trim();
-            console.log(`[MENU] Opción seleccionada: "${option}"`);
+        async (ctx, { gotoFlow, flowDynamic, state }) => {
+            const userMessage = ctx.body.trim();
+            console.log(`[MENU] Mensaje recibido: "${userMessage}"`);
+
+            // Extraer intención con Claude Haiku (detecta opción + nombre + preferencia horaria)
+            const intent = await extractUserIntent(userMessage);
+            console.log(`[MENU] Intención extraída:`, intent);
+
+            const option = intent.option;
+
+            if (!option) {
+                await flowDynamic('❌ Opción no válida. Por favor, respondé con *1*, *2* o *3*.');
+                return;
+            }
+
+            // Si el usuario incluyó su nombre o preferencia, guardarlos en el state
+            if (intent.name) {
+                console.log(`[MENU] → Nombre detectado: "${intent.name}"`);
+                await state.update({ clientName: intent.name });
+            }
+            if (intent.timePreference) {
+                console.log(`[MENU] → Preferencia horaria detectada: "${intent.timePreference}"`);
+                await state.update({ timePreference: intent.timePreference });
+            }
 
             if (option === '1') {
                 console.log('[MENU] → Derivando a newPatientFlow');

@@ -7,12 +7,29 @@ import { createCitaMedicaAppointment } from '../utils/citaMedicaService';
 const MAX_SHOWN = 8;
 
 export const newPatientFlow = addKeyword<Provider, IDBDatabase>(['__new_patient__'])
+    .addAction(async (ctx, { state, flowDynamic }) => {
+        // Verificar si ya tenemos el nombre del state (viene del mainMenu)
+        const existingName = await state.get('clientName');
+        if (existingName) {
+            console.log(`[NEW_PATIENT] Nombre ya detectado: "${existingName}" — saltando paso de captura`);
+            await state.update({ appointmentType: 'Primera consulta ATM/Bruxismo' });
+            await flowDynamic(`¡Perfecto, ${existingName}! 😊`);
+            return; // Sale del action, continúa al siguiente paso
+        }
+    })
     .addAnswer(
         '¡Genial! Para tu primera consulta necesito algunos datos 😊\n\n' +
         '¿Me decís tu *nombre y apellido* completo?\n\n' +
         '_En cualquier momento podés escribir *cancelar* para salir_',
         { capture: true },
         async (ctx, { state, flowDynamic }) => {
+            // Si ya tiene nombre (de mainMenu), este paso se saltea
+            const existingName = await state.get('clientName');
+            if (existingName) {
+                console.log(`[NEW_PATIENT] Nombre ya existe, no capturamos de nuevo`);
+                return; // Skip capture
+            }
+
             console.log(`[NEW_PATIENT] Paso 1 — Nombre recibido: "${ctx.body}"`);
             if (ctx.body.trim().toLowerCase() === 'cancelar') {
                 await state.clear();
@@ -68,7 +85,7 @@ export const newPatientFlow = addKeyword<Provider, IDBDatabase>(['__new_patient_
         async (ctx, { state, flowDynamic }) => {
             console.log('[NEW_PATIENT] Paso 4 — Consultando Google Calendar (60 min)...');
             try {
-                const slots = await getAvailableSlots(60);
+                let slots = await getAvailableSlots(60);
 
                 if (!slots.length) {
                     await flowDynamic(
@@ -77,6 +94,26 @@ export const newPatientFlow = addKeyword<Provider, IDBDatabase>(['__new_patient_
                     );
                     await state.clear();
                     return;
+                }
+
+                // Si el usuario especificó preferencia horaria en el mensaje inicial, filtrar
+                const timePreference: string = await state.get('timePreference') ?? '';
+                if (timePreference) {
+                    console.log(`[NEW_PATIENT] Preferencia horaria detectada: "${timePreference}" — filtrando slots con Haiku`);
+                    await flowDynamic(`🔍 *Buscando turnos según tu preferencia: "${timePreference}"...*`);
+                    try {
+                        const filtered = await filterSlotsByPreference(slots, timePreference);
+                        if (filtered.length > 0) {
+                            slots = filtered;
+                            console.log(`[NEW_PATIENT] Haiku filtró ${slots.length} slots según preferencia`);
+                        } else {
+                            console.log(`[NEW_PATIENT] Haiku no encontró slots que coincidan, mostrando todos`);
+                            await flowDynamic('No encontré turnos exactos para esa preferencia, te muestro las opciones disponibles:');
+                        }
+                    } catch (error) {
+                        console.error('[NEW_PATIENT] Error en Haiku filtering:', error);
+                        // Si Haiku falla, mostrar todos los slots
+                    }
                 }
 
                 await state.update({ slotsCache: slots });
