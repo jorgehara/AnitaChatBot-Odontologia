@@ -12,6 +12,7 @@ export const newPatientFlow = addKeyword<Provider, IDBDatabase>(['__new_patient_
         '_En cualquier momento podés escribir *cancelar* para salir_',
         { capture: true },
         async (ctx, { state, flowDynamic }) => {
+            console.log(`[NEW_PATIENT] Paso 1 — Nombre recibido: "${ctx.body}"`);
             if (ctx.body.trim().toLowerCase() === 'cancelar') {
                 await state.clear();
                 await flowDynamic('❌ Reserva cancelada. ¡Hasta pronto! 👋');
@@ -21,6 +22,7 @@ export const newPatientFlow = addKeyword<Provider, IDBDatabase>(['__new_patient_
                 clientName: ctx.body.trim(),
                 appointmentType: 'Primera consulta ATM/Bruxismo',
             });
+            console.log(`[NEW_PATIENT] Nombre guardado: "${ctx.body.trim()}"`);
         }
     )
     .addAnswer(
@@ -30,6 +32,7 @@ export const newPatientFlow = addKeyword<Provider, IDBDatabase>(['__new_patient_
         '3️⃣ No sé',
         { capture: true },
         async (ctx, { state, flowDynamic }) => {
+            console.log(`[NEW_PATIENT] Paso 2 — Estudios: "${ctx.body}"`);
             if (ctx.body.trim().toLowerCase() === 'cancelar') {
                 await state.clear();
                 await flowDynamic('❌ Reserva cancelada. ¡Hasta pronto! 👋');
@@ -38,6 +41,7 @@ export const newPatientFlow = addKeyword<Provider, IDBDatabase>(['__new_patient_
             const OPTIONS: Record<string, string> = { '1': 'Sí', '2': 'No', '3': 'No sabe' };
             const hasStudies = OPTIONS[ctx.body.trim()] ?? ctx.body.trim();
             await state.update({ hasStudies });
+            console.log(`[NEW_PATIENT] Estudios guardado: "${hasStudies}"`);
         }
     )
     .addAnswer(
@@ -46,6 +50,7 @@ export const newPatientFlow = addKeyword<Provider, IDBDatabase>(['__new_patient_
         '2️⃣ No',
         { capture: true },
         async (ctx, { state, flowDynamic }) => {
+            console.log(`[NEW_PATIENT] Paso 3 — Dispositivo: "${ctx.body}"`);
             if (ctx.body.trim().toLowerCase() === 'cancelar') {
                 await state.clear();
                 await flowDynamic('❌ Reserva cancelada. ¡Hasta pronto! 👋');
@@ -53,12 +58,14 @@ export const newPatientFlow = addKeyword<Provider, IDBDatabase>(['__new_patient_
             }
             const usesDevice = ctx.body.trim() === '1' ? 'Sí' : 'No';
             await state.update({ usesDevice });
+            console.log(`[NEW_PATIENT] Dispositivo guardado: "${usesDevice}"`);
         }
     )
     .addAnswer(
         '⏳ *Buscando los próximos turnos disponibles...*',
         null,
         async (ctx, { state, flowDynamic }) => {
+            console.log('[NEW_PATIENT] Paso 4 — Consultando Google Calendar (60 min)...');
             try {
                 const slots = await getAvailableSlots(60);
 
@@ -104,9 +111,11 @@ export const newPatientFlow = addKeyword<Provider, IDBDatabase>(['__new_patient_
             }
 
             const selectedNumber = parseInt(input);
+            console.log(`[NEW_PATIENT] Paso 5 — Selección: "${input}" → número: ${selectedNumber}`);
 
             // Texto libre → filtrar con Haiku
             if (isNaN(selectedNumber)) {
+                console.log('[NEW_PATIENT] Entrada de texto libre → llamando a Haiku para filtrar');
                 await flowDynamic('🔍 *Buscando turnos según tu preferencia...*');
                 try {
                     const filtered = await filterSlotsByPreference(slots, input);
@@ -134,6 +143,7 @@ export const newPatientFlow = addKeyword<Provider, IDBDatabase>(['__new_patient_
             }
 
             const selectedSlot = slots[selectedNumber - 1];
+            console.log(`[NEW_PATIENT] Slot seleccionado: ${selectedSlot.displayText}`);
             const clientName: string = await state.get('clientName') ?? '';
             const hasStudies: string = await state.get('hasStudies') ?? '';
             const usesDevice: string = await state.get('usesDevice') ?? '';

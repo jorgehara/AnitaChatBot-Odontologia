@@ -10,10 +10,13 @@ const WELCOME_KEYWORDS = [
 
 export const mainMenuFlow = addKeyword<Provider, IDBDatabase>(WELCOME_KEYWORDS)
     .addAction(async (ctx, { state }) => {
-        // No interrumpir si hay un flujo activo
+        console.log(`[MENU] Mensaje recibido de ${ctx.from}: "${ctx.body}"`);
         const clientName = await state.get('clientName');
         const slotsCache = await state.get('slotsCache');
-        if (clientName || slotsCache) return;
+        if (clientName || slotsCache) {
+            console.log('[MENU] Flujo activo detectado — no interrumpir');
+            return;
+        }
     })
     .addAnswer(
         '🦷 *¡Bienvenido al consultorio de la Od. Melina Villalba!* 🦷\n\n' +
@@ -26,9 +29,16 @@ export const mainMenuFlow = addKeyword<Provider, IDBDatabase>(WELCOME_KEYWORDS)
         { capture: true },
         async (ctx, { gotoFlow, flowDynamic }) => {
             const option = ctx.body.trim();
+            console.log(`[MENU] Opción seleccionada: "${option}"`);
 
-            if (option === '1') return gotoFlow(newPatientFlow);
-            if (option === '2') return gotoFlow(controlFlow);
+            if (option === '1') {
+                console.log('[MENU] → Derivando a newPatientFlow');
+                return gotoFlow(newPatientFlow);
+            }
+            if (option === '2') {
+                console.log('[MENU] → Derivando a controlFlow');
+                return gotoFlow(controlFlow);
+            }
 
             if (option === '3') {
                 const emergencyPhone = process.env.EMERGENCY_PHONE_NUMBER || 'XXXXXXXXXX';
