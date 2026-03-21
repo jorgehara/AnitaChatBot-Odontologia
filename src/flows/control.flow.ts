@@ -13,12 +13,28 @@ const CONTROL_TYPES: Record<string, { label: string; duration: 30 | 60 }> = {
 };
 
 export const controlFlow = addKeyword<Provider, IDBDatabase>(['__control__'])
+    .addAction(async (ctx, { state, flowDynamic }) => {
+        // Verificar si ya tenemos el nombre del state (viene del mainMenu)
+        const existingName = await state.get('clientName');
+        if (existingName) {
+            console.log(`[CONTROL] Nombre ya detectado: "${existingName}" — saltando paso de captura`);
+            await flowDynamic(`¡Hola ${existingName}! 😊`);
+            return; // Sale del action, continúa al siguiente paso
+        }
+    })
     .addAnswer(
         '¡Hola! Para tu control, necesito algunos datos 😊\n\n' +
         '¿Me decís tu *nombre y apellido* completo?\n\n' +
         '_En cualquier momento podés escribir *cancelar* para salir_',
         { capture: true },
         async (ctx, { state, flowDynamic }) => {
+            // Si ya tiene nombre (de mainMenu), este paso se saltea
+            const existingName = await state.get('clientName');
+            if (existingName) {
+                console.log(`[CONTROL] Nombre ya existe, no capturamos de nuevo`);
+                return; // Skip capture
+            }
+
             console.log(`[CONTROL] Paso 1 — Nombre recibido: "${ctx.body}"`);
             if (ctx.body.trim().toLowerCase() === 'cancelar') {
                 await state.clear();
@@ -63,7 +79,7 @@ export const controlFlow = addKeyword<Provider, IDBDatabase>(['__control__'])
             const slotDuration: 30 | 60 = (await state.get('slotDuration')) ?? 30;
             console.log(`[CONTROL] Paso 3 — Consultando Google Calendar (${slotDuration} min)...`);
             try {
-                const slots = await getAvailableSlots(slotDuration);
+                let slots = await getAvailableSlots(slotDuration);
 
                 if (!slots.length) {
                     await flowDynamic(
@@ -72,6 +88,26 @@ export const controlFlow = addKeyword<Provider, IDBDatabase>(['__control__'])
                     );
                     await state.clear();
                     return;
+                }
+
+                // Si el usuario especificó preferencia horaria en el mensaje inicial, filtrar
+                const timePreference: string = await state.get('timePreference') ?? '';
+                if (timePreference) {
+                    console.log(`[CONTROL] Preferencia horaria detectada: "${timePreference}" — filtrando slots con Haiku`);
+                    await flowDynamic(`🔍 *Buscando turnos según tu preferencia: "${timePreference}"...*`);
+                    try {
+                        const filtered = await filterSlotsByPreference(slots, timePreference);
+                        if (filtered.length > 0) {
+                            slots = filtered;
+                            console.log(`[CONTROL] Haiku filtró ${slots.length} slots según preferencia`);
+                        } else {
+                            console.log(`[CONTROL] Haiku no encontró slots que coincidan, mostrando todos`);
+                            await flowDynamic('No encontré turnos exactos para esa preferencia, te muestro las opciones disponibles:');
+                        }
+                    } catch (error) {
+                        console.error('[CONTROL] Error en Haiku filtering:', error);
+                        // Si Haiku falla, mostrar todos los slots
+                    }
                 }
 
                 await state.update({ slotsCache: slots });
