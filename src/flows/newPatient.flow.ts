@@ -1,8 +1,8 @@
 import { addKeyword } from '@builderbot/bot';
 import { BaileysProvider as Provider } from '@builderbot/provider-baileys';
-import { getAvailableSlots, AvailableSlot } from '../utils/calendarService';
-import { formatSlotsMessage, filterSlotsByPreference } from '../utils/haikuService';
+import { getTodayAndTomorrowSlots, AvailableSlot } from '../utils/calendarService';
 import { createCitaMedicaAppointment } from '../utils/citaMedicaService';
+import { customDateFlow } from './customDate.flow';
 
 const MAX_SHOWN = 8;
 
@@ -89,41 +89,53 @@ export const newPatientFlow = addKeyword<Provider, IDBDatabase>(['__new_patient_
         '⏳ *Buscando los próximos turnos disponibles...*',
         null,
         async (ctx, { state, flowDynamic }) => {
-            console.log('[NEW_PATIENT] Paso 4 — Consultando Google Calendar (60 min)...');
+            console.log('[NEW_PATIENT] Paso 4 — Consultando Google Calendar (HOY + MAÑANA)...');
             try {
-                let slots = await getAvailableSlots(60);
+                const { today, tomorrow } = await getTodayAndTomorrowSlots(60);
 
-                if (!slots.length) {
+                if (!today.length && !tomorrow.length) {
                     await flowDynamic(
-                        '❌ No encontré turnos disponibles este mes.\n\n' +
+                        '❌ No hay turnos disponibles hoy ni mañana.\n\n' +
                         'Comunicate directamente con la Dra. Villalba para coordinar 📞'
                     );
                     await state.clear();
                     return;
                 }
 
-                // Si el usuario especificó preferencia horaria en el mensaje inicial, filtrar
-                const timePreference: string = await state.get('timePreference') ?? '';
-                if (timePreference) {
-                    console.log(`[NEW_PATIENT] Preferencia horaria detectada: "${timePreference}" — filtrando slots con Haiku`);
-                    await flowDynamic(`🔍 *Buscando turnos según tu preferencia: "${timePreference}"...*`);
-                    try {
-                        const filtered = await filterSlotsByPreference(slots, timePreference);
-                        if (filtered.length > 0) {
-                            slots = filtered;
-                            console.log(`[NEW_PATIENT] Haiku filtró ${slots.length} slots según preferencia`);
-                        } else {
-                            console.log(`[NEW_PATIENT] Haiku no encontró slots que coincidan, mostrando todos`);
-                            await flowDynamic('No encontré turnos exactos para esa preferencia, te muestro las opciones disponibles:');
-                        }
-                    } catch (error) {
-                        console.error('[NEW_PATIENT] Error en Haiku filtering:', error);
-                        // Si Haiku falla, mostrar todos los slots
-                    }
+                // Construir mensaje con turnos de HOY y MAÑANA
+                let message = '📅 *Turnos disponibles:*\n\n';
+                const allSlots: AvailableSlot[] = [];
+                let optionNumber = 1;
+
+                if (today.length > 0) {
+                    message += '🔹 *HOY*\n';
+                    today.slice(0, 4).forEach(slot => {
+                        message += `${optionNumber}. ${slot.displayText}\n`;
+                        allSlots.push(slot);
+                        optionNumber++;
+                    });
+                    message += '\n';
                 }
 
-                await state.update({ slotsCache: slots });
-                await flowDynamic(formatSlotsMessage(slots));
+                if (tomorrow.length > 0) {
+                    message += '🔹 *MAÑANA*\n';
+                    tomorrow.slice(0, 4).forEach(slot => {
+                        message += `${optionNumber}. ${slot.displayText}\n`;
+                        allSlots.push(slot);
+                        optionNumber++;
+                    });
+                    message += '\n';
+                }
+
+                message += `${optionNumber}. 📆 Buscar otra fecha\n\n`;
+                message += '📝 *Respondé con el número del turno que te sirve*\n';
+                message += '_O escribí *cancelar* para salir_';
+
+                await state.update({ 
+                    slotsCache: allSlots,
+                    otherDateOption: optionNumber.toString()
+                });
+                await flowDynamic(message);
             } catch (error) {
                 console.error('[NEW_PATIENT] Error obteniendo slots:', error);
                 await flowDynamic(
@@ -137,7 +149,7 @@ export const newPatientFlow = addKeyword<Provider, IDBDatabase>(['__new_patient_
     .addAnswer(
         '',
         { capture: true },
-        async (ctx, { state, flowDynamic, fallBack }) => {
+        async (ctx, { state, flowDynamic, fallBack, gotoFlow }) => {
             const input = ctx.body.trim();
 
             if (input.toLowerCase() === 'cancelar') {
@@ -147,6 +159,7 @@ export const newPatientFlow = addKeyword<Provider, IDBDatabase>(['__new_patient_
             }
 
             const slots: AvailableSlot[] = (await state.get('slotsCache')) ?? [];
+            const otherDateOption: string = (await state.get('otherDateOption')) ?? '99';
 
             if (!slots.length) {
                 await flowDynamic('❌ No hay turnos disponibles. Comunicate directamente con la Dra. Villalba 📞');
@@ -157,31 +170,24 @@ export const newPatientFlow = addKeyword<Provider, IDBDatabase>(['__new_patient_
             const selectedNumber = parseInt(input);
             console.log(`[NEW_PATIENT] Paso 5 — Selección: "${input}" → número: ${selectedNumber}`);
 
-            // Texto libre → filtrar con Haiku
+            // Verificar si eligió "Otra fecha"
+            if (input === otherDateOption) {
+                console.log('[NEW_PATIENT] Usuario eligió "Otra fecha" → redirigiendo a customDateFlow');
+                await state.update({ appointmentType: 'Primera consulta ATM/Bruxismo' });
+                return gotoFlow(customDateFlow);
+            }
+
             if (isNaN(selectedNumber)) {
-                console.log('[NEW_PATIENT] Entrada de texto libre → llamando a Haiku para filtrar');
-                await flowDynamic('🔍 *Buscando turnos según tu preferencia...*');
-                try {
-                    const filtered = await filterSlotsByPreference(slots, input);
-                    if (!filtered.length) {
-                        await flowDynamic('❌ No encontré turnos que coincidan. Comunicate con la Dra. Villalba 📞');
-                        await state.clear();
-                        return;
-                    }
-                    await state.update({ slotsCache: filtered });
-                    await flowDynamic(formatSlotsMessage(filtered));
-                } catch (error) {
-                    console.error('[NEW_PATIENT] Error en Haiku:', error);
-                    await flowDynamic(formatSlotsMessage(slots));
-                }
+                await flowDynamic(
+                    `❌ Por favor, elegí un número entre *1* y *${otherDateOption}*`
+                );
                 return fallBack();
             }
 
-            const maxIndex = Math.min(MAX_SHOWN, slots.length);
+            const maxIndex = slots.length;
             if (selectedNumber < 1 || selectedNumber > maxIndex) {
                 await flowDynamic(
-                    `❌ Por favor, elegí un número entre *1* y *${maxIndex}*,\n` +
-                    `o escribí tu preferencia de horario (ej: "martes a la tarde")`
+                    `❌ Por favor, elegí un número entre *1* y *${maxIndex}*, o *${otherDateOption}* para otra fecha`
                 );
                 return fallBack();
             }
