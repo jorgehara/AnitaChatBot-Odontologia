@@ -9,7 +9,7 @@
     "start:server": "bash start-server.sh",
     "start:server:win": "powershell -ExecutionPolicy Bypass -File start-server.ps1",
     "lint": "eslint . --no-ignore",
-    "dev": "nodemon --exec tsx ./src/app.ts",
+    "dev": "nodemon",
     "build": "tsc",
     "pm2:start": "pm2 start dist/app.js --name chatbot-odontologa",
     "pm2:stop": "pm2 stop chatbot-odontologa",
