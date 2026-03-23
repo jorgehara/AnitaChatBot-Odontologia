@@ -1196,8 +1196,10 @@ const welcomeFlow = addKeyword<Provider, IDBDatabase>(welcomeKeywords)
         const customDateMode = await state.get('customDateMode');
         if (clientName || socialWork || availableSlots || (slotsCache && slotsCache.length > 0) || customDateMode) {
             // Hay un flujo activo, no interrumpir
+            await state.update({ _welcomeBlocked: true });
             return;
         }
+        await state.update({ _welcomeBlocked: false });
         
         try {
             console.log('=== DEBUG WELCOME FLOW CON HORARIOS ===');
@@ -1427,13 +1429,11 @@ const welcomeFlow = addKeyword<Provider, IDBDatabase>(welcomeKeywords)
         }
     })
     .addAnswer('', { capture: true }, async (ctx, { gotoFlow, flowDynamic, state }) => {
-        // ⚠️ Guard doble: mismo patrón que mainMenuFlow
-        // El addAction bloquea el flow pero el addAnswer igual captura el siguiente mensaje
-        const _clientName = await state.get('clientName');
-        const _slotsCache = await state.get('slotsCache');
-        const _customDateMode = await state.get('customDateMode');
-        if (_clientName || (_slotsCache && _slotsCache.length > 0) || _customDateMode) {
+        // Guard: usar el flag seteado en addAction para saber si este flow fue bloqueado
+        const welcomeBlocked = await state.get('_welcomeBlocked');
+        if (welcomeBlocked) {
             console.log('[WELCOME] ⚠️ Guard en addAnswer — flujo activo, ignorando mensaje');
+            await state.update({ _welcomeBlocked: false });
             return;
         }
 
