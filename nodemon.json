@@ -1,12 +1,13 @@
 {
     "watch": ["src"],
     "ext": "ts",
+    "exec": "tsx ./src/app.ts",
     "ignore": [
-      "**/*.test.ts",
-      "**/*.spec.ts"
-  ],
-    "delay": "3",
-    "execMap": {
-      "ts": "tsx"
-    }
-  }
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "bot_sessions/**",
+        "*.log",
+        "dist/**"
+    ],
+    "delay": "1000"
+}

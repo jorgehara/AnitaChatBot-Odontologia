@@ -63,13 +63,13 @@ export const customDateFlow = addKeyword<Provider, IDBDatabase>(['__custom_date_
                 const dateIntent = await extractDateIntent(ctx.body);
                 console.log('[CUSTOM_DATE] ✅ Intención de fecha:', JSON.stringify(dateIntent));
 
-                if (!dateIntent.date && !dateIntent.dayOfWeek) {
-                    console.log('[CUSTOM_DATE] ❌ No se pudo entender la fecha');
+                if (!dateIntent.date) {
+                    console.log('[CUSTOM_DATE] ❌ Haiku no pudo determinar la fecha');
                     await flowDynamic(
                         'No pude entender la fecha que mencionaste 😅\n\n' +
                         'Por favor, intentá de nuevo con un formato como:\n' +
                         '- "Martes 25"\n' +
-                        '- "Jueves próximo"\n' +
+                        '- "El jueves que viene"\n' +
                         '- "27 de marzo"'
                     );
                     return;
@@ -80,44 +80,28 @@ export const customDateFlow = addKeyword<Provider, IDBDatabase>(['__custom_date_
                 const slotDuration: 30 | 60 = appointmentType.includes('Primera consulta') ? 60 : 30;
                 console.log('[CUSTOM_DATE] Duración de turno:', slotDuration, 'min');
 
-                // Si tenemos fecha completa, buscar directamente
-                if (dateIntent.date) {
-                    console.log('[CUSTOM_DATE] 🔍 Buscando slots para fecha:', dateIntent.date);
-                    const result = await getSlotsByCustomDate(dateIntent.date, slotDuration);
-                    console.log('[CUSTOM_DATE] ✅ Slots encontrados:', result.slots.length);
+                console.log('[CUSTOM_DATE] 🔍 Buscando slots para fecha:', dateIntent.date);
+                const result = await getSlotsByCustomDate(dateIntent.date, slotDuration);
+                console.log('[CUSTOM_DATE] ✅ Slots encontrados:', result.slots.length);
 
-                    if (result.slots.length === 0) {
-                        console.log('[CUSTOM_DATE] ❌ Sin turnos disponibles en próximos 7 días');
-                        await flowDynamic(
-                            '😞 No hay turnos disponibles en los próximos días para la fecha que solicitaste.\n\n' +
-                            '💡 *Opciones*:\n' +
-                            '1️⃣ Escribí otra fecha (ej: "Lunes próximo", "31 de marzo")\n' +
-                            '2️⃣ Escribí *cancelar* para volver al menú\n' +
-                            '3️⃣ Comunicate al *3735604949* para coordinar directamente'
-                        );
-                        // NO limpiamos el state para permitir reintentar
-                        return;
-                    }
-
-                    await state.update({ 
-                        slotsCache: result.slots,
-                        customDateSearch: true 
-                    });
-                    await flowDynamic(result.message);
-                    await flowDynamic(formatSlotsMessage(result.slots));
-                    return;
-                }
-
-                // Si solo tenemos día de semana, necesitamos calcular la fecha
-                if (dateIntent.dayOfWeek) {
-                    console.log('[CUSTOM_DATE] ⚠️  Solo día de semana detectado, pidiendo número');
-                    // TODO: Implementar lógica para calcular próximo día de semana
+                if (result.slots.length === 0) {
+                    console.log('[CUSTOM_DATE] ❌ Sin turnos disponibles en próximos 7 días');
                     await flowDynamic(
-                        'Por ahora, necesito que me des el número de día también.\n' +
-                        'Por ejemplo: "Martes 25" o "Jueves 27"'
+                        '😞 No hay turnos disponibles en los próximos días para la fecha que solicitaste.\n\n' +
+                        '💡 *Opciones*:\n' +
+                        '1️⃣ Escribí otra fecha (ej: "Lunes próximo", "31 de marzo")\n' +
+                        '2️⃣ Escribí *cancelar* para volver al menú\n' +
+                        '3️⃣ Comunicate al *3735604949* para coordinar directamente'
                     );
                     return;
                 }
+
+                await state.update({ 
+                    slotsCache: result.slots,
+                    customDateSearch: true 
+                });
+                await flowDynamic(result.message);
+                await flowDynamic(formatSlotsMessage(result.slots));
 
             } catch (error) {
                 console.error('[CUSTOM_DATE] Error en búsqueda:', error);
