@@ -107,6 +107,11 @@ export async function getAvailableSlots(durationMinutes: 30 | 60): Promise<Avail
     console.log(`[CALENDAR] getAvailableSlots — duración: ${durationMinutes} min`);
     console.log(`[CALENDAR] Rango de búsqueda: ${minBookingUtc.toISOString()} → ${endOfMonthUtc.toISOString()}`);
 
+    if (!calendar) {
+        console.log('[CALENDAR] ⚠️ Google Calendar no configurado — devolviendo slots vacíos');
+        return [];
+    }
+
     const freeBusy = await calendar.freebusy.query({
         requestBody: {
             timeMin: minBookingUtc.toISOString(),
@@ -355,6 +360,11 @@ export async function createCalendarEvent(slot: AvailableSlot, patient: PatientE
     console.log(`[CALENDAR]   Start ISO: ${slot.startISO}`);
     console.log(`[CALENDAR]   End ISO:   ${slot.endISO}`);
     console.log(`[CALENDAR]   Calendar ID: ${CALENDAR_ID}`);
+
+    if (!calendar) {
+        console.log('[CALENDAR] ⚠️ Google Calendar no configurado — evento no creado');
+        return;
+    }
 
     await calendar.events.insert({
         calendarId: CALENDAR_ID,
