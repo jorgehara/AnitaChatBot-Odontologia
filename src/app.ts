@@ -96,7 +96,6 @@ interface AppointmentDetails {
     displayDate: string;
     start: AppointmentTime;
     end: AppointmentTime;
-    patient: Patient;
     summary: string;
 }
 

@@ -5,7 +5,7 @@ import { es } from 'date-fns/locale';
 import axios from 'axios';
 import { APPOINTMENT_CONFIG } from '../config/appointment';
 
-const { API_URL, TIMEZONE, MESSAGES, SOCIAL_WORKS } = APPOINTMENT_CONFIG;
+const { API_URL, TIMEZONE, MESSAGES } = APPOINTMENT_CONFIG;
 
 interface TimeSlot {
     displayTime: string;
@@ -168,23 +168,35 @@ export const appointmentFlow = addKeyword(['turnos'])
         async (ctx, { state }) => {
             const name = ctx.body.trim();
             await state.update({ clientName: name });
+            // ============================================================
+            // [HISTORIAL] Obra Social - Ref: Issue #12
+            // La Od. Villalba trabaja SOLO de manera particular.
+            // Se setea el valor por defecto ya que se quitó la selección.
+            await state.update({ socialWork: 'CONSULTA PARTICULAR' });
+            // ============================================================
         }
     )
-    .addAnswer(
-        ['*Por favor*, selecciona tu *OBRA SOCIAL* de la siguiente lista:',
-         '',
-         '1️⃣ INSSSEP',
-         '2️⃣ Swiss Medical',
-         '3️⃣ OSDE',
-         '4️⃣ Galeno',
-         '5️⃣ CONSULTA PARTICULAR'].join('\n'),
-        { capture: true },
-        async (ctx, { state }) => {
-            const socialWorkOption = ctx.body.trim();
-            const socialWork = SOCIAL_WORKS[socialWorkOption as keyof typeof SOCIAL_WORKS] || 'CONSULTA PARTICULAR';
-            await state.update({ socialWork });
-        }
-    )
+    // ============================================================
+    // [HISTORIAL] Obra Social - Ref: Issue #12
+    // La Od. Villalba trabaja SOLO de manera particular.
+    // Este bloque de selección de obra social se comenta para eliminar referencias,
+    // pero se conserva para posible uso futuro si cambia la modalidad.
+    // .addAnswer(
+    //     ['*Por favor*, selecciona tu *OBRA SOCIAL* de la siguiente lista:',
+    //      '',
+    //      '1️⃣ INSSSEP',
+    //      '2️⃣ Swiss Medical',
+    //      '3️⃣ OSDE',
+    //      '4️⃣ Galeno',
+    //      '5️⃣ CONSULTA PARTICULAR'].join('\n'),
+    //     { capture: true },
+    //     async (ctx, { state }) => {
+    //         const socialWorkOption = ctx.body.trim();
+    //         const socialWork = SOCIAL_WORKS[socialWorkOption as keyof typeof SOCIAL_WORKS] || 'CONSULTA PARTICULAR';
+    //         await state.update({ socialWork });
+    //     }
+    // )
+    // ============================================================
     .addAnswer(
         '*Vamos a proceder con la reserva de tu cita.*',
         { delay: 1000 }

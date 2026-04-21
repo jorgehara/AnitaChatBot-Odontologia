@@ -15,7 +15,9 @@
       "Bash(echo:*)",
       "Skill(builderbot)",
       "Skill(skill-vps-deploy)",
-      "Bash(ssh:*)"
+      "Bash(ssh:*)",
+      "Bash(scp:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []
