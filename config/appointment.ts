@@ -13,14 +13,17 @@ export const APPOINTMENT_CONFIG = {
         breakEnd: 14,   // Fin del descanso (2 PM)
     },
 
-    // Configuración de obras sociales
-    SOCIAL_WORKS: {
-        '1': 'INSSSEP',
-        '2': 'Swiss Medical',
-        '3': 'OSDE',
-        '4': 'Galeno',
-        '5': 'CONSULTA PARTICULAR'
-    },
+    // ============================================================
+    // [HISTORIAL] Obra Social - Ref: Issue #12
+    // Comentado: la Od. trabaja solo de manera particular.
+    // SOCIAL_WORKS: {
+    //     '1': 'INSSSEP',
+    //     '2': 'Swiss Medical',
+    //     '3': 'OSDE',
+    //     '4': 'Galeno',
+    //     '5': 'CONSULTA PARTICULAR'
+    // },
+    // ============================================================
 
     // Configuración de mensajes
     MESSAGES: {

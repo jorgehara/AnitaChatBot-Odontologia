@@ -75,11 +75,18 @@ const isConvActive = async (from, ctxFn) => {
 
 
 
-interface Patient {
-    name: string;
-    phone: string;
-    obrasocial: string;
-}
+// ============================================================
+// [HISTORIAL] Obra Social - Ref: Issue #12
+// La Od. Villalba trabaja SOLO de manera particular.
+// Este código se comenta para eliminar referencias a obras sociales,
+// pero se conserva para posible uso futuro si cambia la modalidad.
+// ============================================================
+// interface Patient {
+//     name: string;
+//     phone: string;
+//     obrasocial: string;
+// }
+// ============================================================
 
 interface AppointmentTime {
     displayTime: string;
@@ -906,12 +913,15 @@ export const bookSobreturnoFlow = addKeyword(['sobreturnos', 'sobreturno', 'Sobr
                                 `🔢 *Sobreturno:* ${numero}\n` +
                                 // `🕒 *Horario:* ${horarioMostrado}\n` +
                                 `👤 *Paciente:* ${clientName}\n` +
-                                `📞 *Teléfono:* ${phone}\n` +
-                                `🏥 *Obra Social:* ${socialWork}\n\n` +
+                                // ============================================================
+                                // [HISTORIAL] Obra Social - Ref: Issue #12
+                                // Comentado: la Od. trabaja solo de manera particular
+                                // `🏥 *Obra Social:* ${socialWork}\n` +
+                                // `• Traiga carnet de obra social\n` +
+                                // ============================================================
                                 `⚠️ *IMPORTANTE:*\n` +
                                 `• Llegue 30 minutos antes\n` +
                                 `• Traiga documento de identidad\n` +
-                                `• Traiga carnet de obra social\n` +
                                 `• *El sobreturno depende de la disponibilidad del médico*\n\n` +
                                 `*¡Gracias por confiar en nosotros!* 🙏`;
                             await flowDynamic(confirmationMessage);
@@ -1054,12 +1064,14 @@ export const clientDataFlow = addKeyword(['datos_cliente'])
                     `📅 *Fecha:* ${fechaFormateada}\n` +
                     `🕒 *Hora:* ${sobreturnoResult.time}\n` +
                     `👤 *Paciente:* ${sobreturnoResult.clientName}\n` +
-                    `📞 *Teléfono:* ${sobreturnoResult.phone}\n` +
-                    `🏥 *Obra Social:* ${sobreturnoResult.socialWork}\n\n` +
+                    // ============================================================
+                    // [HISTORIAL] Obra Social - Ref: Issue #12
+                    // Comentado: la Od. trabaja solo de manera particular
+                    // `📞 *Teléfono:* ${sobreturnoResult.phone}\n` +
+                    // `🏥 *Obra Social:* ${sobreturnoResult.socialWork}\n\n` +
+                    // `- Traiga su carnet de obra social\n` +
+                    // ============================================================
                     `ℹ️ *Información importante:*\n` +
-                    `- Por favor, llegue 30 minutos antes de su cita\n` +
-                    `- Traiga su documento de identidad\n` +
-                    `- Traiga su carnet de obra social\n\n` +
                     `📌 *Para cambios o cancelaciones:*\n` +
                     `Por favor contáctenos con anticipación\n\n` +
                     `*¡Gracias por confiar en nosotros!* 🙏\n` +

@@ -20,10 +20,15 @@ export const APP_CONFIG = {
         workingDays: [1, 2, 3, 4], // Lunes=1, Martes=2, Miércoles=3, Jueves=4
     },
 
-    // Od. Villalba trabaja SOLO de manera particular (sin obras sociales)
-    SOCIAL_WORKS: {
-        '1': 'CONSULTA PARTICULAR'
-    },
+    // ============================================================
+    // [HISTORIAL] Obra Social - Ref: Issue #12
+    // La Od. Villalba trabaja SOLO de manera particular (sin obras sociales).
+    // Este bloque se comenta para eliminar referencias a obras sociales,
+    // pero se conserva para posible uso futuro si cambia la modalidad.
+    // SOCIAL_WORKS: {
+    //     '1': 'CONSULTA PARTICULAR'
+    // },
+    // ============================================================
 
     // Configuración de mensajes
     MESSAGES: {

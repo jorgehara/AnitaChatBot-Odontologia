@@ -224,12 +224,12 @@ export const appointmentFlow = addKeyword(['turnos'])
                     `📅 *Fecha:* ${fechaFormateada}`,
                     `🕒 *Hora:* ${response.data.data.time}`,
                     `👤 *Paciente:* ${response.data.data.clientName}`,
-                    `📞 *Teléfono:* ${response.data.data.phone}`,
-                    `🏥 *Obra Social:* ${response.data.data.socialWork}\n`,
-                    'ℹ️ *Información importante:*',
-                    '- Por favor, llegue 30 minutos antes de su cita',
-                    '- Traiga su documento de identidad',
-                    '- Traiga su carnet de obra social\n',
+                    // ============================================================
+                    // [HISTORIAL] Obra Social - Ref: Issue #12
+                    // Comentado: la Od. trabaja solo de manera particular
+                    // `🏥 *Obra Social:* ${response.data.data.socialWork}\n`,
+                    // '- Traiga su carnet de obra social\n' +
+                    // ============================================================
                     '📌 *Para cambios o cancelaciones:*',
                     'Por favor contáctenos con anticipación\n',
                     '*¡Gracias por confiar en nosotros!* 🙏',
